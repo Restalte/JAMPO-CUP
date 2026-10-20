@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ja">
 <head>
@@ -134,16 +133,6 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
   .ranking-table.team-ranking tbody td:first-child { width: 20px !important; }
 }
 
-/* Requested adjustment: move the Points and Difference columns 4 character-widths to the right on phones only. */
-@media screen and (max-width: 720px) {
-  .ranking-table.team-ranking thead th:nth-child(4),
-  .ranking-table.team-ranking tbody td:nth-child(4),
-  .ranking-table.team-ranking thead th:nth-child(5),
-  .ranking-table.team-ranking tbody td:nth-child(5) {
-    position: relative !important;
-    left: 4em !important;
-  }
-}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -156,9 +145,84 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
  .ranking-table.team-ranking thead th:nth-child(4),
  .ranking-table.team-ranking tbody td:nth-child(4){text-align:center;}
  .ranking-table.team-ranking thead th:nth-child(5),
- .ranking-table.team-ranking tbody td:nth-child(5){text-align:center; transform:translateX(-1.5em);}
+ .ranking-table.team-ranking tbody td:nth-child(5){text-align:center; transform:none;}
  .ranking-table.team-ranking td.points{white-space:nowrap;}
  .ranking-table.team-ranking td.points small{display:inline;font-size:inherit;white-space:nowrap;margin-left:1px;}
+}
+</style>
+
+
+<style id="jampo-mobile-ranking-final-alignment">
+/* Smartphone-only correction: align column labels with values and give team names more room. */
+@media screen and (max-width:720px){
+  .ranking-table.team-ranking{width:100%!important;table-layout:fixed!important;min-width:0!important}
+  .ranking-table.team-ranking thead th:nth-child(1),.ranking-table.team-ranking tbody td:nth-child(1){width:7%!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(2),.ranking-table.team-ranking tbody td:nth-child(2){width:9%!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(3),.ranking-table.team-ranking tbody td:nth-child(3){width:31%!important;text-align:left!important}
+  .ranking-table.team-ranking thead th:nth-child(4),.ranking-table.team-ranking tbody td:nth-child(4){width:19%!important;position:static!important;left:auto!important;transform:none!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(5),.ranking-table.team-ranking tbody td:nth-child(5){width:15%!important;position:static!important;left:auto!important;transform:none!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(6),.ranking-table.team-ranking tbody td:nth-child(6){width:19%!important;text-align:center!important}
+  .ranking-table.team-ranking thead th{padding:6px 1px!important;white-space:nowrap!important;font-size:clamp(8px,2.5vw,10px)!important;text-align:center!important}
+  .ranking-table.team-ranking tbody td{padding:5px 1px!important;white-space:nowrap!important;overflow:visible!important}
+  .ranking-table.team-ranking .team-name-col strong{font-size:clamp(12px,3.6vw,14px)!important;letter-spacing:0!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;font-weight:950!important}
+  .ranking-table.team-ranking td.points{font-size:clamp(12px,3.6vw,14px)!important;text-align:center!important;font-weight:950!important}
+  .ranking-table.team-ranking td.points small{font-size:inherit!important;display:inline!important;white-space:nowrap!important}
+  .ranking-table.team-ranking .team-diff-large{font-size:clamp(11px,3.3vw,13px)!important;text-align:center!important}
+  .ranking-table.team-ranking .team-matches-large{font-size:clamp(10px,3vw,12px)!important;text-align:center!important}
+  .ranking-table.team-ranking .team-icon-col{width:auto!important;padding:4px 0!important}
+  .ranking-table.team-ranking .team-icon-large,.ranking-table.team-ranking .team-icon-fallback-large{width:28px!important;height:28px!important}
+}
+</style>
+
+
+<style id="jampo-mobile-team-ranking-requested-fixes">
+/* Mobile only: align labels with values, keep matches at the right edge, and show longer team names. */
+@media screen and (max-width:720px){
+  .ranking-table.team-ranking{width:100%!important;min-width:0!important;table-layout:fixed!important}
+  .ranking-table.team-ranking thead th:nth-child(1),.ranking-table.team-ranking tbody td:nth-child(1){width:6%!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(2),.ranking-table.team-ranking tbody td:nth-child(2){width:8%!important;text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(3),.ranking-table.team-ranking tbody td:nth-child(3){width:32%!important;text-align:left!important}
+  .ranking-table.team-ranking thead th:nth-child(4),.ranking-table.team-ranking tbody td:nth-child(4){width:20%!important;text-align:center!important;position:static!important;left:auto!important;transform:none!important}
+  .ranking-table.team-ranking thead th:nth-child(5),.ranking-table.team-ranking tbody td:nth-child(5){width:15%!important;text-align:center!important;position:static!important;left:auto!important;transform:none!important}
+  .ranking-table.team-ranking thead th:nth-child(6),.ranking-table.team-ranking tbody td:nth-child(6){width:19%!important;text-align:right!important;padding-right:0!important}
+  .ranking-table.team-ranking thead th{white-space:nowrap!important;text-align:center!important;padding:5px 0!important;font-size:clamp(8px,2.4vw,10px)!important}
+  .ranking-table.team-ranking thead th:nth-child(6){text-align:right!important}
+  .ranking-table.team-ranking tbody td{white-space:nowrap!important;padding:5px 0!important}
+  .ranking-table.team-ranking .team-name-col strong{display:block!important;max-width:100%!important;font-size:clamp(10px,3.05vw,12px)!important;letter-spacing:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
+  .ranking-table.team-ranking td.points{font-size:clamp(11px,3.25vw,13px)!important;text-align:center!important;white-space:nowrap!important}
+  .ranking-table.team-ranking td.points small{display:inline!important;font-size:inherit!important;white-space:nowrap!important;margin-left:1px!important}
+  .ranking-table.team-ranking .team-diff-large{font-size:clamp(10px,2.9vw,12px)!important;text-align:center!important;white-space:nowrap!important}
+  .ranking-table.team-ranking .team-matches-large{font-size:clamp(9px,2.65vw,11px)!important;text-align:right!important;white-space:nowrap!important}
+}
+</style>
+
+<style id="jampo-mobile-team-ranking-verified-layout">
+/* Mobile-only authoritative layout: fixed physical columns keep headings above their values. */
+@media screen and (max-width:720px){
+  .ranking-table.team-ranking{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:collapse!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(1){width:7%!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(2){width:7%!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(3){width:32%!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(4){width:19%!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(5){width:15%!important}
+  .ranking-table.team-ranking colgroup.team-ranking-colgroup col:nth-child(6){width:20%!important}
+  .ranking-table.team-ranking thead th{box-sizing:border-box!important;padding:5px 1px!important;white-space:nowrap!important;font-size:clamp(8px,2.4vw,10px)!important;text-align:center!important}
+  /* Header has 5 THs because the team heading spans the icon and name columns. */
+  .ranking-table.team-ranking thead th:nth-child(1){text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(2){text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(3){text-align:center!important}
+  .ranking-table.team-ranking thead th:nth-child(4){text-align:center!important}
+  .ranking-table.team-ranking tbody td{box-sizing:border-box!important;padding:5px 1px!important;white-space:nowrap!important;overflow:hidden!important}
+  .ranking-table.team-ranking tbody td:nth-child(1){text-align:center!important}
+  .ranking-table.team-ranking tbody td:nth-child(2){text-align:center!important}
+  .ranking-table.team-ranking tbody td:nth-child(3){text-align:left!important}
+  .ranking-table.team-ranking tbody td:nth-child(4){text-align:center!important;font-size:clamp(11px,3.25vw,13px)!important;font-weight:950!important}
+  .ranking-table.team-ranking tbody td:nth-child(4) small{display:inline!important;font-size:inherit!important;white-space:nowrap!important;margin-left:1px!important}
+  .ranking-table.team-ranking tbody td:nth-child(5){text-align:center!important;font-size:clamp(10px,2.9vw,12px)!important;transform:none!important;position:static!important}
+  .ranking-table.team-ranking tbody td:nth-child(6){text-align:right!important;padding-right:0!important;font-size:clamp(9px,2.65vw,11px)!important}
+  .ranking-table.team-ranking .team-name-col strong{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;font-size:clamp(10px,3.05vw,12px)!important;letter-spacing:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important}
+  .ranking-table.team-ranking .team-icon-col{width:auto!important;padding:4px 0!important}
+  .ranking-table.team-ranking .team-icon-large,.ranking-table.team-ranking .team-icon-fallback-large{width:28px!important;height:28px!important}
 }
 </style>
 
@@ -195,6 +259,7 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
     <div class="ranking-panel team-ranking-panel">
       <div class="ranking-heading"><div><span class="ranking-kicker">TEAM POINTS</span><h3>チームポイントランキング</h3></div><span class="ranking-unit">TOTAL POINTS</span></div>
       <div class="table-scroll"><table class="ranking-table team-ranking" id="team-ranking-table">
+        <colgroup class="team-ranking-colgroup"><col><col><col><col><col><col></colgroup>
         <thead><tr><th>順位</th><th colspan="2">チーム</th><th>ポイント</th><th>差</th><th>試合数</th></tr></thead>
         <tbody>
           <tr class="rank-first"><td><span class="rank-medal">1</span></td><td><span class="team-chip chip-yellow">蜂</span><strong>雀蜂</strong></td><td>—</td><td class="points">— <small>pt</small></td></tr>
@@ -294,7 +359,7 @@ function jakFmt(n){n=Number(n)||0;return (n>0?'+':'')+n.toFixed(1)}
 function jakGet(){const def={teams:['チームA','チームB','チームC','チームD'],teamMeta:{'チームA':{color:'#111111'},'チームB':{color:'#111111'},'チームC':{color:'#111111'},'チームD':{color:'#111111'}},players:[{id:'p1',name:'選手名を登録',team:'チームA',profile:''},{id:'p2',name:'選手名を登録',team:'チームB',profile:''},{id:'p3',name:'選手名を登録',team:'チームC',profile:''},{id:'p4',name:'選手名を登録',team:'チームD',profile:''}],results:[],manualTeamPoints:{},manualPoints:{},manualBest:{},news:[],settings:{start:25000,return:30000,uma:[30,10,-10,-30],oka:20}};try{return {...def,...JSON.parse(localStorage.getItem(JAK_KEY)||'{}')}}catch(e){return def}}
 function jakCompute(d){let ps={};d.players.forEach(p=>ps[p.id]={player:p,points:0,best:null,matches:0});let ts={};d.teams.forEach(t=>ts[t]=0);for(const r of d.results||[]){let sorted=[...r.entries].sort((a,b)=>Number(b.score)-Number(a.score));sorted.forEach((e,i)=>{if(!ps[e.playerId])return;let place=i+1,pt=(Number(e.score)-Number(d.settings.return||30000))/1000+(d.settings.uma||[30,10,-10,-30])[place-1]+(place===1?Number(d.settings.oka||0):0);ps[e.playerId].points+=pt;ps[e.playerId].matches++;ps[e.playerId].best=ps[e.playerId].best===null?Number(e.score):Math.max(ps[e.playerId].best,Number(e.score));ts[ps[e.playerId].player.team]=(ts[ps[e.playerId].player.team]||0)+pt})}Object.values(ps).forEach(s=>{s.points+=Number(d.manualPoints?.[s.player.id]||0);if(d.manualBest?.[s.player.id]!==undefined)s.best=Math.max(s.best??-Infinity,Number(d.manualBest[s.player.id]))});Object.keys(ts).forEach(t=>ts[t]+=Number(d.manualTeamPoints?.[t]||0));return {players:Object.values(ps),teams:d.teams.map(t=>({name:t,points:ts[t]||0, matches:(d.results||[]).filter(r=>r.entries.some(e=>ps[e.playerId]?.player.team===t)).length}))}}
 function jakRows(table,rows){if(!table)return;const body=table.querySelector('tbody');body.innerHTML=rows;}
-function jakRender(){let d=jakGet(),c=jakCompute(d);const teamTable=document.getElementById('team-ranking-table');if(teamTable){let ts=[...c.teams].sort((a,b)=>b.points-a.points),leader=ts[0]?.points||0;jakRows(teamTable,ts.map((t,i)=>{const meta=d.teamMeta?.[t.name]||{};const icon=meta.image?`<img class="team-icon-large" src="${meta.image}" alt="${jakEsc(t.name)} アイコン">`:`<span class="team-icon-fallback-large">${jakEsc(t.name.slice(0,1))}</span>`;return `<tr class="${i===0?'rank-first':''}"><td><span class="rank-medal">${i+1}</span></td><td class="team-icon-col">${icon}</td><td class="team-name-col"><strong>${(d.teamMeta?.[t.name]||{}).published?jakEsc(((d.teamMeta?.[t.name]||{}).shortName||t.name).slice(0,7)):'COMING SOON'}</strong></td><td class="points">${jakFmt(t.points)} <small>pt</small></td><td class="team-diff-large ${t.points-leader<0?'negative':'positive'}">${jakFmt(t.points-leader)}</td><td class="team-matches-large">${t.matches}/48</td></tr>`}).join(''));}
+function jakRender(){let d=jakGet(),c=jakCompute(d);const teamTable=document.getElementById('team-ranking-table');if(teamTable){let ts=[...c.teams].sort((a,b)=>b.points-a.points),leader=ts[0]?.points||0;jakRows(teamTable,ts.map((t,i)=>{const meta=d.teamMeta?.[t.name]||{};const icon=meta.image?`<img class="team-icon-large" src="${meta.image}" alt="${jakEsc(t.name)} アイコン">`:`<span class="team-icon-fallback-large">${jakEsc(t.name.slice(0,1))}</span>`;return `<tr class="${i===0?'rank-first':''}"><td><span class="rank-medal">${i+1}</span></td><td class="team-icon-col">${icon}</td><td class="team-name-col"><strong>${(d.teamMeta?.[t.name]||{}).published?jakEsc(((d.teamMeta?.[t.name]||{}).shortName||t.name).slice(0,(window.matchMedia('(max-width: 720px)').matches?10:7))):'COMING SOON'}</strong></td><td class="points">${jakFmt(t.points)} <small>pt</small></td><td class="team-diff-large ${t.points-leader<0?'negative':'positive'}">${jakFmt(t.points-leader)}pt</td><td class="team-matches-large">${t.matches}/48</td></tr>`}).join(''));}
 function renderPlayers(table,type){if(!table)return;let list=[...c.players].sort((a,b)=>type==='best'?((b.best??-Infinity)-(a.best??-Infinity)):b.points-a.points);let showAll=table.dataset.showall==='1';let visible=showAll?list:list.slice(0,8);jakRows(table,visible.map((s,i)=>`<tr><td><span class="rank-medal">${i+1}</span></td><td><strong>${jakEsc(s.player.name)}</strong></td><td><span class="team-tag">${(d.teamMeta?.[s.player.team]||{}).published?jakEsc((d.teamMeta?.[s.player.team]||{}).shortName||s.player.team):'COMING SOON'}</span></td><td class="points">${type==='best'?(s.best===null?'—':jakEsc(s.best)):(jakFmt(s.points)+' <small>pt</small>')}</td></tr>`).join(''));let panel=table.closest('.ranking-panel');if(panel&&!panel.querySelector('[data-jak-showall]')&&list.length>8){let b=document.createElement('button');b.className='more';b.style.cssText='border:0;border-bottom:2px solid var(--yellow);background:white;cursor:pointer;margin:10px 20px';b.textContent='8位以下を表示 ＋';b.dataset.jakShowall=type;b.onclick=()=>{table.dataset.showall='1';b.textContent='上位8位のみ表示 −';b.onclick=()=>{table.dataset.showall='0';jakRender()};jakRender()};panel.appendChild(b)}else if(panel&&list.length<=8){let b=panel.querySelector('[data-jak-showall]');if(b)b.remove()}}
 renderPlayers(document.getElementById('individual-ranking-table'),'points');renderPlayers(document.getElementById('best-ranking-table'),'best');
 // Render configurable team cards using the admin's team names, colors, and uploaded images.
