@@ -75,6 +75,29 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="cloud-sync.js"></script>
+
+<style id="jampo-mobile-four-player-columns">
+/* Mobile roster: always show four players per row, as requested. */
+@media (max-width:760px){
+ .players-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;}
+ .player-card{aspect-ratio:.58/1;grid-template-columns:1fr;grid-template-rows:1fr auto;}
+ .player-info{padding:4px 3px;gap:3px;}
+ .player-info h3{font-size:clamp(8px,2.5vw,12px);line-height:1.25;margin:0 0 2px;padding-bottom:3px;overflow-wrap:anywhere;}
+ .player-debut{font-size:8px;line-height:1.2;}
+ .player-socials{gap:3px;flex-wrap:wrap;}
+ .social-link{width:19px;height:19px;font-size:10px;}
+ .social-link svg{width:12px;height:12px;}
+}
+@media (max-width:420px){
+ .players-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+ .player-card{aspect-ratio:.52/1;}
+ .player-info{padding:3px 2px;}
+ .player-info h3{font-size:clamp(7px,2.35vw,10px);}
+ .player-debut{font-size:7px;}
+ .social-link{width:17px;height:17px;}
+}
+</style>
+
 </head>
 <body>
 <header class="topbar">
