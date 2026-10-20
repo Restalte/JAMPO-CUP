@@ -18,8 +18,14 @@
     return;
   }
   const client = window.supabase.createClient(window.JAMPO_SUPABASE_URL, window.JAMPO_SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  // A failed save must not poison the queue: later saves should still run.
   let saveQueue = Promise.resolve();
   let remoteHasData = false;
+  let lastSaveState = { status: 'idle', message: 'まだ保存していません', at: null };
+  function publishSaveState(status, message) {
+    lastSaveState = { status, message, at: new Date().toISOString() };
+    window.dispatchEvent(new CustomEvent('jampo-cloud-save-state', { detail: lastSaveState }));
+  }
   async function readRemote() {
     const {data,error} = await client.from('jampo_site_data').select('data').eq('id',1).maybeSingle();
     if (error) throw error;
@@ -28,12 +34,26 @@
   }
   const stable = value => value && typeof value === 'object' ? (Array.isArray(value) ? '['+value.map(stable).join(',')+']' : '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stable(value[k])).join(',')+'}') : JSON.stringify(value);
   async function save(data) {
-    saveQueue = saveQueue.then(async () => {
-      const {data:sessionData} = await client.auth.getSession();
+    // Recover from a previous rejected promise before enqueueing this write.
+    saveQueue = saveQueue.catch(() => {}).then(async () => {
+      publishSaveState('saving', 'Supabaseへ保存中…');
+      const {data:sessionData, error:sessionError} = await client.auth.getSession();
+      if (sessionError) throw sessionError;
       if (!sessionData.session) throw new Error('管理者ログインが必要です。');
-      const {error} = await client.from('jampo_site_data').upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'});
+      // Ask Supabase to return the saved row so a successful HTTP request is verified.
+      const {data:written, error} = await client
+        .from('jampo_site_data')
+        .upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'})
+        .select('id, updated_at')
+        .single();
       if (error) throw error;
+      if (!written || Number(written.id) !== 1) throw new Error('保存結果を確認できませんでした。');
       remoteHasData = true;
+      publishSaveState('saved', 'クラウド保存成功');
+      return written;
+    }).catch(err => {
+      publishSaveState('error', 'クラウド保存失敗: ' + (err?.message || '原因不明のエラー'));
+      throw err;
     });
     return saveQueue;
   }
@@ -57,19 +77,28 @@
   Storage.prototype.setItem = function(key,value) {
     nativeSet.call(this,key,value);
     if (this === localStorage && key === KEY && window.JAMPO_CLOUD?.canWrite) {
-      try { save(JSON.parse(value)).catch(err => { console.error(err); alert('クラウド保存に失敗しました。通信状態と管理者ログインを確認してください。'); }); }
-      catch(err) { console.error(err); }
+      try { save(JSON.parse(value)).catch(err => { console.error('[JAMPO cloud] Save failed:', err); }); }
+      catch(err) { publishSaveState('error', '保存データを読み取れませんでした'); console.error(err); }
     }
   };
   const nativeRemove = Storage.prototype.removeItem;
   Storage.prototype.removeItem = function(key) {
     nativeRemove.call(this,key);
     if (this === localStorage && key === KEY && window.JAMPO_CLOUD?.canWrite) {
-      save({}).catch(err => { console.error(err); alert('クラウド上の初期化に失敗しました。'); });
+      save({}).catch(err => { console.error('[JAMPO cloud] Clear failed:', err); });
     }
   };
   window.JAMPO_CLOUD = {
     configured:true, client, ready, save, readRemote,
+    get lastSaveState(){ return lastSaveState; },
+    async waitForPendingSaves(){ return saveQueue; },
+    async syncNow(){
+      const latest = await readRemote();
+      if (!latest) return { changed:false, data:null };
+      let current = {}; try { current = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) {}
+      if (stable(current) !== stable(latest)) { nativeSet.call(localStorage, KEY, JSON.stringify(latest)); return { changed:true, data:latest }; }
+      return { changed:false, data:latest };
+    },
     get canWrite(){return !!window.__JAMPO_ADMIN_AUTHENTICATED;},
     async isAdminUser(user){
       if(!user?.id)return false;
@@ -97,6 +126,23 @@
       if(!remote){const local=JSON.parse(localStorage.getItem(KEY)||'{}');await save(local);}
     }
   };
+  // Visible sync indicator so an admin can distinguish local editing from a confirmed cloud save.
+  function mountCloudStatus() {
+    if (document.getElementById('jampo-cloud-status')) return;
+    const el = document.createElement('div');
+    el.id = 'jampo-cloud-status';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:999990;max-width:min(420px,calc(100vw - 28px));padding:9px 13px;border-radius:10px;background:#242424;color:#fff;font:12px/1.45 system-ui,sans-serif;box-shadow:0 4px 18px #0003;display:none;white-space:normal;overflow-wrap:anywhere';
+    document.body.appendChild(el);
+    const render = state => {
+      el.style.display = 'block';
+      el.textContent = state.message;
+      el.style.background = state.status === 'error' ? '#8b1e1e' : state.status === 'saved' ? '#17633a' : '#242424';
+    };
+    window.addEventListener('jampo-cloud-save-state', e => render(e.detail));
+    if (window.JAMPO_CLOUD?.lastSaveState?.status !== 'idle') render(window.JAMPO_CLOUD.lastSaveState);
+  }
   // Public pages automatically refresh when another admin saves shared data.
   if (!(location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html'))) {
     setInterval(async () => {
@@ -123,10 +169,10 @@
       document.body.appendChild(gate);
       if(!window.JAMPO_CLOUD_CONFIGURED){document.getElementById('jampo-login-error').textContent='クラウド設定が未完了です。supabase-config.js と README の設定を完了してください。';return;}
       const app=document.getElementById('app'); if(app)app.style.display='none';
-      try {const session=await window.JAMPO_CLOUD.getSession();if(session){await window.JAMPO_CLOUD.initializeDataIfEmpty();gate.remove();if(app)app.style.display='';}} catch(e) {console.warn(e);}
+      try {const session=await window.JAMPO_CLOUD.getSession();if(session){await window.JAMPO_CLOUD.initializeDataIfEmpty();gate.remove();if(app)app.style.display='';mountCloudStatus();}} catch(e) {console.warn(e);}
       document.getElementById('jampo-login-form').addEventListener('submit',async e=>{
         e.preventDefault();const msg=document.getElementById('jampo-login-error');msg.textContent='ログイン中…';
-        try{await window.JAMPO_CLOUD.login(document.getElementById('jampo-admin-email').value.trim(),document.getElementById('jampo-admin-password').value);await window.JAMPO_CLOUD.initializeDataIfEmpty();if(app)app.style.display='';gate.remove();location.reload();}
+        try{await window.JAMPO_CLOUD.login(document.getElementById('jampo-admin-email').value.trim(),document.getElementById('jampo-admin-password').value);await window.JAMPO_CLOUD.initializeDataIfEmpty();if(app)app.style.display='';gate.remove();mountCloudStatus();location.reload();}
         catch(err){msg.textContent='ログインできませんでした。メールアドレス・パスワード、Supabaseの設定を確認してください。';console.error(err);}
       });
     },{once:true});
