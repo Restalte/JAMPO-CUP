@@ -113,6 +113,17 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
 .team-ranking-panel .team-icon-fallback-large{background:transparent;color:#111;border:0}
 @media(max-width:650px){.team-ranking-panel .ranking-heading{padding:14px 0 16px}}
 
+/* スマートフォン：チーム名とポイントの重なりを防ぐ */
+@media(max-width:650px){
+ .ranking-table.team-ranking .team-icon-col{width:9%;}
+ .ranking-table.team-ranking .team-name-col{width:25%;overflow:hidden;}
+ .ranking-table.team-ranking .team-name-col strong{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(11px,3.1vw,14px);}
+ .ranking-table.team-ranking td.points{width:20%;font-size:clamp(14px,4vw,18px);letter-spacing:-.04em;}
+ .ranking-table.team-ranking td.points small{font-size:9px;}
+ .ranking-table.team-ranking tbody td{padding-left:2px;padding-right:2px;}
+ .ranking-table.team-ranking .team-diff-large{font-size:12px!important;}
+ .ranking-table.team-ranking .team-matches-large{font-size:11px!important;}
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
