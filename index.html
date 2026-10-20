@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ja">
 <head>
@@ -148,6 +149,19 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="cloud-sync.js"></script>
+
+<style id="jampo-mobile-ranking-alignment-fix">
+/* Mobile-only: keep each ranking heading directly above its values. */
+@media (max-width:720px){
+ .ranking-table.team-ranking thead th:nth-child(4),
+ .ranking-table.team-ranking tbody td:nth-child(4){text-align:center;}
+ .ranking-table.team-ranking thead th:nth-child(5),
+ .ranking-table.team-ranking tbody td:nth-child(5){text-align:center; transform:translateX(-1.5em);}
+ .ranking-table.team-ranking td.points{white-space:nowrap;}
+ .ranking-table.team-ranking td.points small{display:inline;font-size:inherit;white-space:nowrap;margin-left:1px;}
+}
+</style>
+
 </head>
 <body>
 <header class="topbar">
