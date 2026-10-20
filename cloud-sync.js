@@ -18,14 +18,11 @@
     return;
   }
   const client = window.supabase.createClient(window.JAMPO_SUPABASE_URL, window.JAMPO_SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-  // A failed save must not poison the queue: later saves should still run.
   let saveQueue = Promise.resolve();
   let remoteHasData = false;
-  let lastSaveState = { status: 'idle', message: 'まだ保存していません', at: null };
-  function publishSaveState(status, message) {
-    lastSaveState = { status, message, at: new Date().toISOString() };
-    window.dispatchEvent(new CustomEvent('jampo-cloud-save-state', { detail: lastSaveState }));
-  }
+  // Prevent stale localStorage data from flashing before cloud hydration finishes.
+  const isAdminPage = /(^|\/)admin\.html$/.test(location.pathname);
+  document.documentElement.style.visibility = 'hidden';
   async function readRemote() {
     const {data,error} = await client.from('jampo_site_data').select('data').eq('id',1).maybeSingle();
     if (error) throw error;
@@ -34,26 +31,13 @@
   }
   const stable = value => value && typeof value === 'object' ? (Array.isArray(value) ? '['+value.map(stable).join(',')+']' : '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stable(value[k])).join(',')+'}') : JSON.stringify(value);
   async function save(data) {
-    // Recover from a previous rejected promise before enqueueing this write.
+    // A failed previous save must not permanently block the queue.
     saveQueue = saveQueue.catch(() => {}).then(async () => {
-      publishSaveState('saving', 'Supabaseへ保存中…');
-      const {data:sessionData, error:sessionError} = await client.auth.getSession();
-      if (sessionError) throw sessionError;
+      const {data:sessionData} = await client.auth.getSession();
       if (!sessionData.session) throw new Error('管理者ログインが必要です。');
-      // Ask Supabase to return the saved row so a successful HTTP request is verified.
-      const {data:written, error} = await client
-        .from('jampo_site_data')
-        .upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'})
-        .select('id, updated_at')
-        .single();
+      const {error} = await client.from('jampo_site_data').upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'});
       if (error) throw error;
-      if (!written || Number(written.id) !== 1) throw new Error('保存結果を確認できませんでした。');
       remoteHasData = true;
-      publishSaveState('saved', 'クラウド保存成功');
-      return written;
-    }).catch(err => {
-      publishSaveState('error', 'クラウド保存失敗: ' + (err?.message || '原因不明のエラー'));
-      throw err;
     });
     return saveQueue;
   }
@@ -63,42 +47,52 @@
   let ready = Promise.resolve();
   if (marker === href) {
     sessionStorage.removeItem('jampo_cloud_reloaded_for');
+    // The previous page load already hydrated localStorage from Supabase.
+    document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.visibility = 'visible'; }, { once: true });
   } else {
     ready = readRemote().then(data => {
       if (data) {
+        // Replace, do not merge: old device-only values must not override shared data.
         localStorage.setItem(KEY, JSON.stringify(data));
         sessionStorage.setItem('jampo_cloud_reloaded_for', href);
         location.reload();
+        return;
       }
-    }).catch(err => console.warn('[JAMPO cloud] Shared data could not be loaded:', err));
+      // No shared row yet: allow the page to open. First admin initialization can seed it.
+      document.documentElement.style.visibility = 'visible';
+    }).catch(err => {
+      console.error('[JAMPO cloud] Shared data could not be loaded:', err);
+      document.documentElement.style.visibility = 'visible';
+      if (!isAdminPage) {
+        const showError = () => {
+          if (document.getElementById('jampo-cloud-read-error')) return;
+          const box = document.createElement('div'); box.id = 'jampo-cloud-read-error';
+          box.style.cssText = 'position:fixed;z-index:999998;left:12px;right:12px;bottom:12px;padding:14px 16px;background:#7f1d1d;color:#fff;border-radius:10px;font:14px/1.5 system-ui,sans-serif;box-shadow:0 4px 20px #0003';
+          box.textContent = '共有データを読み込めませんでした。表示内容が最新ではない可能性があります。ページを再読み込みするか、管理者にSupabaseの接続状態を確認してもらってください。';
+          document.body.appendChild(box);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showError, { once: true }); else showError();
+      }
+    });
   }
   // Keep the existing site's localStorage-based feature code, but mirror authenticated writes to Supabase.
   const nativeSet = Storage.prototype.setItem;
   Storage.prototype.setItem = function(key,value) {
     nativeSet.call(this,key,value);
     if (this === localStorage && key === KEY && window.JAMPO_CLOUD?.canWrite) {
-      try { save(JSON.parse(value)).catch(err => { console.error('[JAMPO cloud] Save failed:', err); }); }
-      catch(err) { publishSaveState('error', '保存データを読み取れませんでした'); console.error(err); }
+      try { save(JSON.parse(value)).catch(err => { console.error(err); alert('クラウド保存に失敗しました。通信状態と管理者ログインを確認してください。'); }); }
+      catch(err) { console.error(err); }
     }
   };
   const nativeRemove = Storage.prototype.removeItem;
   Storage.prototype.removeItem = function(key) {
     nativeRemove.call(this,key);
     if (this === localStorage && key === KEY && window.JAMPO_CLOUD?.canWrite) {
-      save({}).catch(err => { console.error('[JAMPO cloud] Clear failed:', err); });
+      save({}).catch(err => { console.error(err); alert('クラウド上の初期化に失敗しました。'); });
     }
   };
   window.JAMPO_CLOUD = {
     configured:true, client, ready, save, readRemote,
-    get lastSaveState(){ return lastSaveState; },
-    async waitForPendingSaves(){ return saveQueue; },
-    async syncNow(){
-      const latest = await readRemote();
-      if (!latest) return { changed:false, data:null };
-      let current = {}; try { current = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) {}
-      if (stable(current) !== stable(latest)) { nativeSet.call(localStorage, KEY, JSON.stringify(latest)); return { changed:true, data:latest }; }
-      return { changed:false, data:latest };
-    },
     get canWrite(){return !!window.__JAMPO_ADMIN_AUTHENTICATED;},
     async isAdminUser(user){
       if(!user?.id)return false;
@@ -126,26 +120,10 @@
       if(!remote){const local=JSON.parse(localStorage.getItem(KEY)||'{}');await save(local);}
     }
   };
-  // Visible sync indicator so an admin can distinguish local editing from a confirmed cloud save.
-  function mountCloudStatus() {
-    if (document.getElementById('jampo-cloud-status')) return;
-    const el = document.createElement('div');
-    el.id = 'jampo-cloud-status';
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', 'polite');
-    el.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:999990;max-width:min(420px,calc(100vw - 28px));padding:9px 13px;border-radius:10px;background:#242424;color:#fff;font:12px/1.45 system-ui,sans-serif;box-shadow:0 4px 18px #0003;display:none;white-space:normal;overflow-wrap:anywhere';
-    document.body.appendChild(el);
-    const render = state => {
-      el.style.display = 'block';
-      el.textContent = state.message;
-      el.style.background = state.status === 'error' ? '#8b1e1e' : state.status === 'saved' ? '#17633a' : '#242424';
-    };
-    window.addEventListener('jampo-cloud-save-state', e => render(e.detail));
-    if (window.JAMPO_CLOUD?.lastSaveState?.status !== 'idle') render(window.JAMPO_CLOUD.lastSaveState);
-  }
   // Public pages automatically refresh when another admin saves shared data.
   if (!(location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html'))) {
     setInterval(async () => {
+      if (document.documentElement.style.visibility === 'hidden') return;
       try {
         const latest = await readRemote();
         if (!latest) return;
@@ -169,10 +147,10 @@
       document.body.appendChild(gate);
       if(!window.JAMPO_CLOUD_CONFIGURED){document.getElementById('jampo-login-error').textContent='クラウド設定が未完了です。supabase-config.js と README の設定を完了してください。';return;}
       const app=document.getElementById('app'); if(app)app.style.display='none';
-      try {const session=await window.JAMPO_CLOUD.getSession();if(session){await window.JAMPO_CLOUD.initializeDataIfEmpty();gate.remove();if(app)app.style.display='';mountCloudStatus();}} catch(e) {console.warn(e);}
+      try {const session=await window.JAMPO_CLOUD.getSession();if(session){await window.JAMPO_CLOUD.initializeDataIfEmpty();gate.remove();if(app)app.style.display='';}} catch(e) {console.warn(e);}
       document.getElementById('jampo-login-form').addEventListener('submit',async e=>{
         e.preventDefault();const msg=document.getElementById('jampo-login-error');msg.textContent='ログイン中…';
-        try{await window.JAMPO_CLOUD.login(document.getElementById('jampo-admin-email').value.trim(),document.getElementById('jampo-admin-password').value);await window.JAMPO_CLOUD.initializeDataIfEmpty();if(app)app.style.display='';gate.remove();mountCloudStatus();location.reload();}
+        try{await window.JAMPO_CLOUD.login(document.getElementById('jampo-admin-email').value.trim(),document.getElementById('jampo-admin-password').value);await window.JAMPO_CLOUD.initializeDataIfEmpty();if(app)app.style.display='';gate.remove();location.reload();}
         catch(err){msg.textContent='ログインできませんでした。メールアドレス・パスワード、Supabaseの設定を確認してください。';console.error(err);}
       });
     },{once:true});
