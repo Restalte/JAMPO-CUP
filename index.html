@@ -117,6 +117,22 @@ footer{background:#111;color:white;padding:34px 0}.footer-inner{display:flex;jus
 .team-ranking-panel .team-icon-fallback-large{background:transparent;color:#111;border:0}
 @media(max-width:650px){.team-ranking-panel .ranking-heading{padding:14px 0 16px}}
 
+/* FINAL FIX: mobile-only team ranking typography and left alignment */
+@media screen and (max-width: 720px) {
+  .ranking-table.team-ranking td.points { font-size: 14px !important; }
+  .ranking-table.team-ranking td.points small { font-size: 10px !important; }
+  .ranking-table.team-ranking .team-icon-col { width: 30px !important; padding-left: 0 !important; padding-right: 0 !important; }
+  .ranking-table.team-ranking .team-name-col { padding-left: 0 !important; }
+  .ranking-table.team-ranking thead th:first-child,
+  .ranking-table.team-ranking tbody td:first-child { width: 20px !important; padding-left: 0 !important; padding-right: 0 !important; }
+}
+@media screen and (max-width: 390px) {
+  .ranking-table.team-ranking td.points { font-size: 12px !important; }
+  .ranking-table.team-ranking td.points small { font-size: 9px !important; }
+  .ranking-table.team-ranking .team-icon-col { width: 26px !important; }
+  .ranking-table.team-ranking thead th:first-child,
+  .ranking-table.team-ranking tbody td:first-child { width: 20px !important; }
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
